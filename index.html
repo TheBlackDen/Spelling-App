@@ -79,7 +79,7 @@
   <h2 id="modeTitle"></h2>
   <div id="chineseHint" style="font-size: 24px; font-weight: bold; color: #444;"></div>
   <p><strong>Word <span id="wordCount"></span>:</strong></p>
-  <input type="text" id="answerInput" onkeydown="handleKey(event)" placeholder="Type the word here" />
+  <input type="text" id="answerInput" onkeydown="handleKey(event)" placeholder="Type the word here" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" />
   <button onclick="playWord()">🔊 Play</button>
   <div id="feedback" class="feedback"></div>
   <button id="hintButton" class="hidden" onclick="showLetterHint()">💡 Hint</button>
