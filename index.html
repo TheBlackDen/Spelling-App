@@ -86,11 +86,15 @@
   <button onclick="goBackToSetButtons()">🔙 Cancel and Return to Lists</button>
 </div>
 
+
+</div>
 <div id="results" class="hidden">
   <h2>Test Results</h2>
   <p id="scoreDisplay"></p>
   <ul id="resultsList"></ul>
   <button onclick="goBackToSetButtons()">🔙 Cancel and Return to Lists</button>
+  <button onclick="startTestMode()">🔁 Retake Test</button>
+  <button onclick="startWrongOnlyTest()">❌ Review Wrong Answers Only</button>
 </div>
 <p class="small-text" id="progressInfo"></p>
 <script>
@@ -256,8 +260,13 @@ function nextWord() {
   const count = document.getElementById("wordCount");
   const input = document.getElementById("answerInput");
   const feedback = document.getElementById("feedback");
+
   if (currentWordIndex >= words.length) {
-    document.getElementById("practice").classList.add("hidden");
+    
+if (mode === "study") {
+      document.getElementById("results").classList.remove("hidden");
+      document.getElementById("scoreDisplay").innerHTML = `<h2>Study Complete</h2><p>Great job! You've finished all 10 words.</p>`;
+    }
     if (mode === "test") showResults();
     return;
   }
