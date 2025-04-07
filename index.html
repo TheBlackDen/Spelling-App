@@ -1,0 +1,282 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Spelling Study & Test</title>
+<style>
+  body {
+    font-family: 'Segoe UI', 'Helvetica Neue', sans-serif;
+    background: #f3f6fb;
+    color: #333;
+    max-width: 700px;
+    margin: 40px auto;
+    padding: 30px;
+    line-height: 1.6;
+    border-radius: 12px;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+  }
+  h1, h2 {
+    color: #2b5dff;
+  }
+  input, button, select, textarea {
+    padding: 10px;
+    font-size: 18px;
+    border-radius: 8px;
+    border: 1px solid #ccc;
+    margin-top: 10px;
+    box-sizing: border-box;
+  }
+  button {
+    background-color: #2b5dff;
+    color: white;
+    border: none;
+    cursor: pointer;
+    transition: background 0.2s;
+  }
+  button:hover {
+    background-color: #2047cc;
+  }
+  .hidden { display: none; }
+  .feedback { margin-top: 15px; font-weight: bold; font-size: 18px; }
+  .correct { color: green; }
+  .wrong { color: red; }
+  .set-buttons .set-entry {
+    margin: 10px 0;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+  .set-buttons button {
+    margin-right: 10px;
+  }
+  #modeChooser button {
+    margin: 10px 10px 0 0;
+  }
+  .results-actions button {
+    margin-right: 10px;
+    margin-top: 20px;
+  }
+  .small-text {
+    font-size: 0.9em;
+    color: #666;
+  }
+</style>
+</head>
+<body>
+<!-- UI now styled with colors, larger sans-serif fonts, and cleaner layout -->
+<h1>Sonia's Spelling Practice</h1>
+<div class="set-buttons" id="setButtons"></div>
+<div id="modeChooser" class="hidden">
+  <h2 id="selectedSetTitle"></h2>
+  <button onclick="startStudyMode()">📘 Study</button>
+  <button onclick="startTestMode()">📝 Test</button>
+  <button onclick="resetProgress(currentSetName)">🗑 Reset Progress</button>
+  <button onclick="goBackToSetButtons()">🔙 Back</button>
+</div>
+<div id="practice" class="hidden">
+  <h2 id="modeTitle"></h2>
+  <p><strong>Word <span id="wordCount"></span>:</strong></p>
+  <input type="text" id="answerInput" onkeydown="handleKey(event)" placeholder="Type the word here" />
+  <button onclick="playWord()">🔊 Play</button>
+  <div id="feedback" class="feedback"></div>
+  <button id="hintButton" class="hidden" onclick="showLetterHint()">💡 Hint</button>
+  <button onclick="goBackToSetButtons()">🔙 Cancel and Return to Lists</button>
+</div>
+<div id="results" class="hidden">
+  <h2>Test Results</h2>
+  <p id="scoreDisplay"></p>
+  <ul id="resultsList"></ul>
+  <button onclick="goBackToSetButtons()">🔙 Cancel and Return to Lists</button>
+</div>
+<p class="small-text" id="progressInfo"></p>
+<script>
+const predefinedSets = {
+  "Week 2": ["common", "costume", "custom", "favorite", "parade", "sprinkle", "surround", "tasty", "travel", "wonder"],
+  "Week 3": ["amazing", "band", "celebration", "clothing", "light up", "fireworks", "include", "last", "midnight", "trick"],
+  "Week 4": ["active", "cliff", "earth", "erosion", "explode", "island", "local", "properties", "solid", "steep"],
+  "Week 5": ["boulder", "carry away", "community", "crash onto", "shore", "slope", "smash into", "storm", "wash away", "weak"],
+  "Week 6": ["agree", "challenging", "discover", "drought", "hero", "interest", "perform", "crop", "study", "succeed"]
+};
+
+let words = [], currentWordIndex = 0, mode = "", wrongAttempts = 0, results = [], lastWrongWords = [], selectedVoice = null, currentSetName = "";
+
+function createSetButtons() {
+  const container = document.getElementById("setButtons");
+  container.innerHTML = "";
+  for (let setName in predefinedSets) {
+    const entry = document.createElement("div");
+    entry.className = "set-entry";
+    const btn = document.createElement("button");
+    btn.textContent = setName;
+    btn.onclick = () => showModeChooser(setName);
+    const progress = localStorage.getItem(`progress-${setName}`);
+    const info = document.createElement("span");
+    info.className = "small-text";
+    if (progress) {
+      const { date, score } = JSON.parse(progress);
+      info.textContent = `Last: ${score} on ${date}`;
+    }
+    entry.appendChild(btn);
+    entry.appendChild(info);
+    container.appendChild(entry);
+  }
+}
+
+function showModeChooser(name) {
+  currentSetName = name;
+  document.getElementById("selectedSetTitle").innerText = `${name} - Choose Mode:`;
+  document.getElementById("modeChooser").classList.remove("hidden");
+  document.getElementById("setButtons").classList.add("hidden");
+}
+
+function goBackToSetButtons() {
+  document.getElementById("modeChooser").classList.add("hidden");
+  document.getElementById("practice").classList.add("hidden");
+  document.getElementById("results").classList.add("hidden");
+  document.getElementById("setButtons").classList.remove("hidden");
+  document.getElementById("feedback").innerHTML = "";
+  document.getElementById("answerInput").value = "";
+  document.getElementById("hintButton").classList.add("hidden");
+  document.getElementById("modeTitle").innerText = "";
+  document.getElementById("wordCount").innerText = "";
+}
+
+speechSynthesis.onvoiceschanged = loadVoices;
+function resetProgress(setName) {
+  if (confirm(`Are you sure you want to reset progress for ${setName}?`)) {
+    localStorage.removeItem(`progress-${setName}`);
+    alert("Progress reset.");
+    goBackToSetButtons();
+  }
+}
+
+function setupWords(randomize = false) {
+  words = predefinedSets[currentSetName].slice();
+  if (randomize) words = words.sort(() => Math.random() - 0.5);
+}
+
+function startStudyMode() {
+  setupWords(true);
+  mode = "study";
+  document.getElementById("modeTitle").innerText = `Study Mode - ${currentSetName}`;
+  document.getElementById("modeChooser").classList.add("hidden");
+  document.getElementById("results").classList.add("hidden");
+  document.getElementById("practice").classList.remove("hidden");
+  currentWordIndex = 0; wrongAttempts = 0; nextWord();
+}
+
+function startTestMode() {
+  setupWords(true);
+  mode = "test"; results = [];
+  document.getElementById("modeTitle").innerText = `Test Mode - ${currentSetName}`;
+  document.getElementById("modeChooser").classList.add("hidden");
+  document.getElementById("results").classList.add("hidden");
+  document.getElementById("practice").classList.remove("hidden");
+  currentWordIndex = 0; wrongAttempts = 0; nextWord();
+}
+
+function startWrongOnlyTest() {
+  words = lastWrongWords;
+  if (words.length === 0) return alert("No wrong answers to review!");
+  mode = "test"; results = [];
+  document.getElementById("modeTitle").innerText = `Test: Wrong Answers Only`;
+  document.getElementById("results").classList.add("hidden");
+  document.getElementById("practice").classList.remove("hidden");
+  currentWordIndex = 0; wrongAttempts = 0; nextWord();
+}
+
+function startWrongOnlyStudy() {
+  words = lastWrongWords;
+  if (words.length === 0) return alert("No wrong answers to review!");
+  mode = "study";
+  document.getElementById("modeTitle").innerText = `Study: Wrong Answers Only`;
+  document.getElementById("results").classList.add("hidden");
+  document.getElementById("practice").classList.remove("hidden");
+  currentWordIndex = 0; wrongAttempts = 0; nextWord();
+}
+
+function playWord() {
+  const word = words[currentWordIndex];
+  let utterance = new SpeechSynthesisUtterance(word);
+  utterance.rate = 0.85; utterance.pitch = 1;
+  if (selectedVoice) utterance.voice = selectedVoice;
+  speechSynthesis.speak(utterance);
+}
+
+function handleKey(e) { if (e.key === "Enter") checkAnswer(); }
+
+function checkAnswer() {
+  const input = document.getElementById("answerInput");
+  const feedback = document.getElementById("feedback");
+  const hintButton = document.getElementById("hintButton");
+  const userAnswer = input.value.trim().toLowerCase();
+  const correct = words[currentWordIndex];
+  input.value = ""; input.focus();
+  hintButton.classList.add("hidden");
+
+  if (mode === "study") {
+    if (userAnswer === correct) {
+      feedback.innerHTML = "<span class='correct'>✔️ Correct!</span>";
+      setTimeout(() => { currentWordIndex++; wrongAttempts = 0; nextWord(); }, 1000);
+    } else {
+      wrongAttempts++;
+      if (wrongAttempts >= 3) {
+        hintButton.classList.add("hidden");
+        feedback.innerHTML = `<span class='wrong'>Incorrect. The correct spelling is: <strong>${correct}</strong></span>`;
+        setTimeout(() => { currentWordIndex++; wrongAttempts = 0; nextWord(); }, 2000);
+      } else {
+        if (wrongAttempts >= 2) hintButton.classList.remove("hidden");
+        const shuffled = correct.split("").sort(() => 0.5 - Math.random()).join("");
+        feedback.innerHTML = `<span class='wrong'>Try again. Hint: ${shuffled}</span>`;
+      }
+    }
+  } else if (mode === "test") {
+    results.push({ word: correct, correct: userAnswer === correct, user: userAnswer });
+    currentWordIndex++; nextWord();
+  }
+}
+
+function nextWord() {
+  const count = document.getElementById("wordCount");
+  const input = document.getElementById("answerInput");
+  const feedback = document.getElementById("feedback");
+  if (currentWordIndex >= words.length) {
+    document.getElementById("practice").classList.add("hidden");
+    if (mode === "test") showResults();
+    return;
+  }
+  count.innerText = `${currentWordIndex + 1} of ${words.length}`;
+  input.value = ""; input.focus(); feedback.innerHTML = "";
+  playWord();
+}
+
+function showResults() {
+  const correctCount = results.filter(r => r.correct).length;
+  lastWrongWords = results.filter(r => !r.correct).map(r => r.word);
+  document.getElementById("results").classList.remove("hidden");
+  document.getElementById("scoreDisplay").innerText = `Score: ${correctCount} / ${results.length}`;
+  const ul = document.getElementById("resultsList");
+  ul.innerHTML = "";
+  results.forEach(r => {
+    const li = document.createElement("li");
+    li.innerHTML = `${r.word} - <strong class='${r.correct ? "correct" : "wrong"}'>${r.correct ? "Correct" : `Wrong (${r.user})`}</strong>`;
+    ul.appendChild(li);
+  });
+  localStorage.setItem(`progress-${currentSetName}`, JSON.stringify({ date: new Date().toLocaleString(), score: `${correctCount}/${results.length}` }));
+  const saved = JSON.parse(localStorage.getItem(`progress-${currentSetName}`));
+  document.getElementById("progressInfo").innerText = `Last completed: ${saved.date} — Score: ${saved.score}`;
+}
+
+function loadVoices() {
+  const voices = speechSynthesis.getVoices();
+  selectedVoice = voices.find(v => v.lang.startsWith("en-US") && v.name.toLowerCase().includes("female"))
+    || voices.find(v => v.lang.startsWith("en-US"));
+}
+
+// Init setup AFTER all functions are declared
+speechSynthesis.onvoiceschanged = loadVoices;
+createSetButtons();
+
+</script>
+</body>
