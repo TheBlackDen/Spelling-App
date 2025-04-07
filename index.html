@@ -74,8 +74,10 @@
   <button onclick="resetProgress(currentSetName)">🗑 Reset Progress</button>
   <button onclick="goBackToSetButtons()">🔙 Back</button>
 </div>
+
 <div id="practice" class="hidden">
   <h2 id="modeTitle"></h2>
+  <div id="chineseHint" style="font-size: 24px; font-weight: bold; color: #444;"></div>
   <p><strong>Word <span id="wordCount"></span>:</strong></p>
   <input type="text" id="answerInput" onkeydown="handleKey(event)" placeholder="Type the word here" />
   <button onclick="playWord()">🔊 Play</button>
@@ -83,6 +85,7 @@
   <button id="hintButton" class="hidden" onclick="showLetterHint()">💡 Hint</button>
   <button onclick="goBackToSetButtons()">🔙 Cancel and Return to Lists</button>
 </div>
+
 <div id="results" class="hidden">
   <h2>Test Results</h2>
   <p id="scoreDisplay"></p>
@@ -238,6 +241,18 @@ function checkAnswer() {
 }
 
 function nextWord() {
+  const chineseMap = {
+    "common": "常見的；共同的", "costume": "服裝；裝扮", "custom": "習俗；佈公", "favorite": "最喜歡的", "parade": "遊行",
+    "sprinkle": "灑下", "surround": "圍繞", "tasty": "美味的", "travel": "旅遊；行走", "wonder": "想知道；納悶",
+    "amazing": "驚奇的", "band": "樂團", "celebration": "慶祝典禮", "clothing": "衣服", "light up": "照亮；點亮",
+    "fireworks": "煙火", "include": "包含", "last": "持續", "midnight": "午夜", "trick": "花招",
+    "active": "活躍的", "cliff": "懸崖", "earth": "地球；地面；土壤", "erosion": "侵蝕；腐蝕", "explode": "爆炸",
+    "island": "島", "local": "當地的", "properties": "特性；性質；特徵", "solid": "固體的", "steep": "陡峭的",
+    "boulder": "大石；圓塊石", "carry away": "搬走；捲走", "community": "社區", "crash onto": "撞上", "shore": "海岸",
+    "slope": "坡；坡度", "smash into": "撞上", "storm": "暴風雨；風暴", "wash away": "沖走", "weak": "脆弱的；虛弱的",
+    "agree": "同意", "challenging": "具挑戰性；困難的", "discover": "發現", "drought": "乾旱", "hero": "英雄",
+    "interest": "興趣", "perform": "表演", "crop": "作物", "study": "學習", "succeed": "成功"
+  };
   const count = document.getElementById("wordCount");
   const input = document.getElementById("answerInput");
   const feedback = document.getElementById("feedback");
@@ -248,6 +263,7 @@ function nextWord() {
   }
   count.innerText = `${currentWordIndex + 1} of ${words.length}`;
   input.value = ""; input.focus(); feedback.innerHTML = "";
+  document.getElementById("chineseHint").innerText = chineseMap[words[currentWordIndex]] || "";
   playWord();
 }
 
