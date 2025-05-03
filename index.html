@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<title>Spelling Study & Test</title>
+<title>Sonia's Spelling Practice</title>
 <style>
   body {
     font-family: 'Segoe UI', 'Helvetica Neue', sans-serif;
@@ -73,7 +73,6 @@
   <button onclick="resetProgress(currentSetName)">🗑 Reset Progress</button>
   <button onclick="goBackToSetButtons()">🔙 Back</button>
 </div>
-
 <div id="practice" class="hidden">
   <h2 id="modeTitle"></h2>
   <div id="chineseHint" style="font-size: 24px; font-weight: bold; color: #444;"></div>
@@ -84,7 +83,6 @@
   <button id="hintButton" class="hidden" onclick="showLetterHint()">💡 Hint</button>
   <button onclick="goBackToSetButtons()">🔙 Cancel and Return to Lists</button>
 </div>
-
 <div id="results" class="hidden">
   <h2>Test Results</h2>
   <p id="scoreDisplay"></p>
@@ -95,16 +93,216 @@
 </div>
 <p class="small-text" id="progressInfo"></p>
 <script>
+// === FULL JAVASCRIPT FUNCTIONALITY ===
+
 const predefinedSets = {
   "Week 2": ["common", "costume", "custom", "favorite", "parade", "sprinkle", "surround", "tasty", "travel", "wonder"],
   "Week 3": ["amazing", "band", "celebration", "clothing", "light up", "fireworks", "include", "last", "midnight", "trick"],
   "Week 4": ["active", "cliff", "earth", "erosion", "explode", "island", "local", "properties", "solid", "steep"],
   "Week 5": ["boulder", "carry away", "community", "crash onto", "shore", "slope", "smash into", "storm", "wash away", "weak"],
   "Week 6": ["agree", "challenging", "discover", "drought", "hero", "interest", "perform", "crop", "study", "succeed"],
-  "Phonics #12 (ou, ow)": ["blouse", "hound (dog)", "grouch", "frown", "plow", "spout", "trout", "scowl", "pouch", "brows", "crouch", "ground"],
-  "Phonics #11 (oi, oy)": ["royal", "point", "voyage", "soil", "boil", "oil", "cowboy", "coins", "broiled", "foil", "toy", "choice", "voice", "noise", "soy sauce"],
-  "Phonics #10 (au, aw)": ["sauce", "caught", "draw", "lawn", "claw", "bawl", "taught", "law", "fault", "auto", "jaw", "dawn", "yawn", "slaw", "straw", "launch", "gnaw", "raw", "jigsaw", "sausage"]
+  "Phonics #10 (au, aw)": ["sauce","caught","draw","lawn","claw","bawl","taught","law","fault","auto","jaw","dawn","yawn","slaw","straw","launch","gnaw","raw","jigsaw","sausage"],
+  "Phonics #11 (oi, oy)": ["royal","point","voyage","soil","boil","oil","cowboy","coins","broiled","foil","toy","choice","voice","noise","soy sauce"],
+  "Phonics #12 (ou, ow)": ["blouse","hound (dog)","grouch","frown","plow","spout","trout","scowl","pouch","brows","crouch","ground"]
 };
+
+const chineseMap = {
+  "common": "常見的；共同的", "costume": "服裝；裝扮", "custom": "習俗；佈公", "favorite": "最喜歡的", "parade": "遊行",
+  "sprinkle": "灑下", "surround": "圍繞", "tasty": "美味的", "travel": "旅遊；行走", "wonder": "想知道；納悶",
+  "amazing": "驚奇的", "band": "樂團", "celebration": "慶祝典禮", "clothing": "衣服", "light up": "照亮；點亮",
+  "fireworks": "煙火", "include": "包含", "last": "持續", "midnight": "午夜", "trick": "花招",
+  "active": "活躍的", "cliff": "懸崖", "earth": "地球；地面；土壤", "erosion": "侵蚀；腐蝕", "explode": "爆炸",
+  "island": "島", "local": "當地的", "properties": "特性；性質；特徵", "solid": "固體的", "steep": "陡峭的",
+  "boulder": "大石；圓塊石", "carry away": "搬走；捲走", "community": "社區", "crash onto": "撞上", "shore": "海岸",
+  "slope": "坡；坡度", "smash into": "撞上", "storm": "暴風雨；風暴", "wash away": "沖走", "weak": "脆弱的；虛弱的",
+  "agree": "同意", "challenging": "具挑戰性；困難的", "discover": "發現", "drought": "乾旱", "hero": "英雄",
+  "interest": "興趣", "perform": "表演", "crop": "作物", "study": "學習", "succeed": "成功",
+  "blouse": "女襯衫", "hound (dog)": "獵犬", "grouch": "抱怨", "frown": "皺眉頭", "plow": "犁",
+  "spout": "噴水", "trout": "鱒魚", "scowl": "不開心", "pouch": "小袋", "brows": "眉毛",
+  "crouch": "蹲下", "ground": "地", "royal": "皇家", "point": "指出", "voyage": "漫長的旅程",
+  "soil": "土壤", "boil": "沸騰", "oil": "油", "cowboy": "牛仔", "coins": "硬幣",
+  "broiled": "炙烤的", "foil": "箔", "toy": "玩具(複數)", "choice": "選擇", "voice": "歌喉",
+  "noise": "噪音", "soy sauce": "醬油", "sauce": "醬", "caught": "抓到", "draw": "畫",
+  "lawn": "草坪", "claw": "爪", "bawl": "大哭", "taught": "教過", "law": "法",
+  "fault": "錯", "auto": "車", "jaw": "下巴", "dawn": "黎明", "yawn": "哈欠",
+  "slaw": "菜絲", "straw": "吸管", "launch": "發射", "gnaw": "咬", "raw": "生的",
+  "jigsaw": "拼圖", "sausage": "香腸"
+};
+
+let words = [], currentWordIndex = 0, mode = "", wrongAttempts = 0, results = [], lastWrongWords = [], currentSetName = "";
+let selectedVoice = null;
+
+function createSetButtons() {
+  const container = document.getElementById("setButtons");
+  container.innerHTML = "";
+  for (let setName in predefinedSets) {
+    const entry = document.createElement("div");
+    entry.className = "set-entry";
+    const btn = document.createElement("button");
+    btn.textContent = setName;
+    btn.onclick = () => showModeChooser(setName);
+    const progress = localStorage.getItem(`progress-${setName}`);
+    const info = document.createElement("span");
+    info.className = "small-text";
+    if (progress) {
+      const { date, score } = JSON.parse(progress);
+      info.textContent = `Last: ${score} on ${date}`;
+    }
+    entry.appendChild(btn);
+    entry.appendChild(info);
+    container.appendChild(entry);
+  }
+}
+
+function showModeChooser(name) {
+  currentSetName = name;
+  document.getElementById("selectedSetTitle").innerText = `${name} - Choose Mode:`;
+  document.getElementById("modeChooser").classList.remove("hidden");
+  document.getElementById("setButtons").classList.add("hidden");
+}
+
+function goBackToSetButtons() {
+  document.getElementById("modeChooser").classList.add("hidden");
+  document.getElementById("practice").classList.add("hidden");
+  document.getElementById("results").classList.add("hidden");
+  document.getElementById("setButtons").classList.remove("hidden");
+  document.getElementById("feedback").innerHTML = "";
+  document.getElementById("answerInput").value = "";
+  document.getElementById("hintButton").classList.add("hidden");
+  document.getElementById("modeTitle").innerText = "";
+  document.getElementById("wordCount").innerText = "";
+}
+
+function setupWords(randomize = false) {
+  words = predefinedSets[currentSetName].slice();
+  if (randomize) words = words.sort(() => Math.random() - 0.5);
+}
+
+function startStudyMode() {
+  setupWords(true);
+  mode = "study";
+  document.getElementById("modeTitle").innerText = `Study Mode - ${currentSetName}`;
+  document.getElementById("modeChooser").classList.add("hidden");
+  document.getElementById("results").classList.add("hidden");
+  document.getElementById("practice").classList.remove("hidden");
+  currentWordIndex = 0;
+  wrongAttempts = 0;
+  nextWord();
+}
+
+function startTestMode() {
+  setupWords(true);
+  mode = "test";
+  results = [];
+  document.getElementById("modeTitle").innerText = `Test Mode - ${currentSetName}`;
+  document.getElementById("modeChooser").classList.add("hidden");
+  document.getElementById("results").classList.add("hidden");
+  document.getElementById("practice").classList.remove("hidden");
+  currentWordIndex = 0;
+  wrongAttempts = 0;
+  nextWord();
+}
+
+function playWord() {
+  const word = words[currentWordIndex];
+  const utterance = new SpeechSynthesisUtterance(word);
+  utterance.rate = 0.85;
+  utterance.pitch = 1;
+  if (selectedVoice) utterance.voice = selectedVoice;
+  speechSynthesis.speak(utterance);
+}
+
+function handleKey(e) {
+  if (e.key === "Enter") checkAnswer();
+}
+
+function checkAnswer() {
+  const input = document.getElementById("answerInput");
+  const feedback = document.getElementById("feedback");
+  const hintButton = document.getElementById("hintButton");
+  const userAnswer = input.value.trim().toLowerCase();
+  const correct = words[currentWordIndex].toLowerCase();
+  input.value = "";
+  input.focus();
+  hintButton.classList.add("hidden");
+
+  if (mode === "study") {
+    if (userAnswer === correct) {
+      feedback.innerHTML = "<span class='correct'>✔️ Correct!</span>";
+      setTimeout(() => { currentWordIndex++; wrongAttempts = 0; nextWord(); }, 1000);
+    } else {
+      wrongAttempts++;
+      if (wrongAttempts >= 3) {
+        feedback.innerHTML = `<span class='wrong'>Incorrect. The correct spelling is: <strong>${correct}</strong></span>`;
+        setTimeout(() => { currentWordIndex++; wrongAttempts = 0; nextWord(); }, 2000);
+      } else {
+        if (wrongAttempts === 2) hintButton.classList.remove("hidden");
+        const shuffled = correct.split('').sort(() => 0.5 - Math.random()).join('');
+        feedback.innerHTML = `<span class='wrong'>Try again. Hint: ${shuffled}</span>`;
+      }
+    }
+  } else if (mode === "test") {
+    results.push({ word: words[currentWordIndex], correct: userAnswer === correct, user: userAnswer });
+    currentWordIndex++;
+    nextWord();
+  }
+}
+
+function nextWord() {
+  const count = document.getElementById("wordCount");
+  const input = document.getElementById("answerInput");
+  const feedback = document.getElementById("feedback");
+
+  if (currentWordIndex >= words.length) {
+    if (mode === "study") {
+      document.getElementById("results").classList.remove("hidden");
+      document.getElementById("scoreDisplay").innerHTML = `<h2>Study Complete</h2><p>Great job! You've finished all words.</p>`;
+    } else {
+      showResults();
+    }
+    return;
+  }
+
+  count.innerText = `${currentWordIndex + 1} of ${words.length}`;
+  input.value = "";
+  input.focus();
+  feedback.innerHTML = "";
+  document.getElementById("chineseHint").innerText = chineseMap[words[currentWordIndex]] || "";
+  playWord();
+}
+
+function showResults() {
+  const correctCount = results.filter(r => r.correct).length;
+  lastWrongWords = results.filter(r => !r.correct).map(r => r.word);
+  document.getElementById("results").classList.remove("hidden");
+  document.getElementById("scoreDisplay").innerText = `Score: ${correctCount} / ${results.length}`;
+  const ul = document.getElementById("resultsList");
+  ul.innerHTML = "";
+  results.forEach(r => {
+    const li = document.createElement("li");
+    li.innerHTML = `${r.word} - <strong class='${r.correct ? "correct" : "wrong"}'>${r.correct ? "Correct" : `Wrong (${r.user})`}</strong>`;
+    ul.appendChild(li);
+  });
+  localStorage.setItem(`progress-${currentSetName}`, JSON.stringify({ date: new Date().toLocaleString(), score: `${correctCount}/${results.length}` }));
+  const saved = JSON.parse(localStorage.getItem(`progress-${currentSetName}`));
+  document.getElementById("progressInfo").innerText = `Last completed: ${saved.date} — Score: ${saved.score}`;
+}
+
+function resetProgress(setName) {
+  if (confirm(`Are you sure you want to reset progress for ${setName}?`)) {
+    localStorage.removeItem(`progress-${setName}`);
+    alert("Progress reset.");
+    goBackToSetButtons();
+  }
+}
+
+function loadVoices() {
+  const voices = speechSynthesis.getVoices();
+  selectedVoice = voices.find(v => v.lang.startsWith("en-US") && v.name.toLowerCase().includes("female")) || voices.find(v => v.lang.startsWith("en-US"));
+}
+
+speechSynthesis.onvoiceschanged = loadVoices;
+createSetButtons();
 </script>
 </body>
 </html>
